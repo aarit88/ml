@@ -1,0 +1,17 @@
+# Environments
+.venv/
+drowsy_env/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Logs
+*.log
+
+# Caches
+.pytest_cache/
+.coverage
+htmlcov/

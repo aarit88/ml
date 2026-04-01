@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Driver Drowsiness Detection System</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body class="bg-gradient-to-br from-beige-50 to-green-50 min-h-screen">
+    <!-- Header -->
+    <header class="bg-white shadow-lg animate-fade-in">
+        <nav class="container mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <i class="fas fa-car text-green-600 text-2xl animate-pulse"></i>
+                    <h1 class="text-2xl font-bold text-gray-800">Driver Safety Monitor</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span id="connection-status" class="flex items-center">
+                        <span class="w-3 h-3 bg-gray-400 rounded-full mr-2"></span>
+                        <span class="text-sm text-gray-600">Offline</span>
+                    </span>
+                    <button id="settings-btn" class="text-gray-600 hover:text-green-600 transition-colors">
+                        <i class="fas fa-cog text-xl"></i>
+                    </button>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-6 py-8">
+        <div class="grid lg:grid-cols-2 gap-8">
+            <!-- Video Feed Section -->
+            <section class="bg-white rounded-2xl shadow-xl p-6 animate-slide-up">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-semibold text-gray-800">
+                        <i class="fas fa-video mr-2 text-green-600"></i>
+                        Live Camera Feed
+                    </h2>
+                    <button id="detection-toggle" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-all transform hover:scale-105">
+                        <i class="fas fa-play mr-2"></i>
+                        Start Detection
+                    </button>
+                        <!-- Camera Monitor -->
+                        <div class="relative bg-slate-900 rounded-2xl overflow-hidden aspect-video shadow-2xl group border-4 border-slate-800">
+                            <!-- Browser Video used for local preview and capture -->
+                            <video id="webcam-video" autoplay playsinline muted class="w-full h-full object-cover"></video>
+                            
+                            <!-- Hidden Canvas for capturing frames to send to server -->
+                            <canvas id="capture-canvas" class="hidden" width="640" height="480"></canvas>
+
+                            <!-- Legacy Video Feed (Hidden now, as we use webcam-video) -->
+                            <img id="video-feed" src="" class="hidden w-full h-full object-cover" alt="Camera Feed">
+                    
+                    <!-- Camera Overlay (shown when camera is off) -->
+                    <div id="camera-overlay" class="absolute inset-0 flex items-center justify-center bg-gray-900 bg-opacity-90">
+                        <div class="text-center text-white">
+                            <i class="fas fa-video-slash text-6xl mb-4 animate-bounce"></i>
+                            <p class="text-lg">Detection is off</p>
+                            <p class="text-sm text-gray-300 mt-2">Click "Start Detection" to begin monitoring</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Video Controls -->
+                <div class="mt-4 flex justify-center space-x-4">
+                    <button id="screenshot-btn" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors disabled:opacity-50" disabled>
+                        <i class="fas fa-camera mr-2"></i>
+                        Screenshot
+                    </button>
+                </div>
+            </section>
+
+            <!-- Status & Metrics Section -->
+            <section class="space-y-6">
+                <!-- Status Card -->
+                <div class="bg-white rounded-2xl shadow-xl p-6 animate-slide-up" style="animation-delay: 0.1s;">
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4">
+                        <i class="fas fa-heartbeat mr-2 text-green-600"></i>
+                        Driver Status
+                    </h2>
+                    
+                    <div id="status-display" class="text-center py-6">
+                        <div class="inline-flex items-center justify-center w-28 h-28 rounded-full bg-green-100 animate-pulse-slow">
+                            <i class="fas fa-user-check text-5xl text-green-600"></i>
+                        </div>
+                        <h3 id="status-text" class="text-2xl font-bold text-green-600 mt-4">Driver Attentive</h3>
+                        <p id="status-description" class="text-gray-600 mt-2">System is monitoring driver behavior</p>
+                    </div>
+
+                    <!-- Eye & Mouth Status Badges -->
+                    <div class="grid grid-cols-2 gap-4 mt-4">
+                        <div id="eye-status-badge" class="status-badge status-badge-ok rounded-xl p-4 text-center transition-all duration-300">
+                            <i class="fas fa-eye text-2xl mb-2"></i>
+                            <p class="text-xs font-semibold uppercase tracking-wide">Eyes</p>
+                            <p id="eye-status-text" class="text-lg font-bold mt-1">--</p>
+                        </div>
+                        <div id="mouth-status-badge" class="status-badge status-badge-ok rounded-xl p-4 text-center transition-all duration-300">
+                            <i class="fas fa-lips text-2xl mb-2"></i>
+                            <p class="text-xs font-semibold uppercase tracking-wide">Mouth</p>
+                            <p id="mouth-status-text" class="text-lg font-bold mt-1">--</p>
+                        </div>
+                    </div>
+
+                    <!-- Metrics Grid -->
+                    <div class="grid grid-cols-2 gap-4 mt-4">
+                        <div class="bg-beige-50 rounded-lg p-4">
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm text-gray-600">Eye Aspect Ratio</span>
+                                <i class="fas fa-eye text-green-600"></i>
+                            </div>
+                            <p id="ear-value" class="text-2xl font-bold text-gray-800 mt-1">0.00</p>
+                            <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
+                                <div id="ear-bar" class="bg-green-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-beige-50 rounded-lg p-4">
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm text-gray-600">Mouth Aspect Ratio</span>
+                                <i class="fas fa-meh text-green-600"></i>
+                            </div>
+                            <p id="mar-value" class="text-2xl font-bold text-gray-800 mt-1">0.00</p>
+                            <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
+                                <div id="mar-bar" class="bg-green-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Alerts Panel -->
+                <div class="bg-white rounded-2xl shadow-xl p-6 animate-slide-up" style="animation-delay: 0.2s;">
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4">
+                        <i class="fas fa-bell mr-2 text-green-600"></i>
+                        Recent Alerts
+                    </h2>
+                    
+                    <div id="alerts-container" class="space-y-3 max-h-48 overflow-y-auto">
+                        <div class="text-center text-gray-500 py-6">
+                            <i class="fas fa-check-circle text-4xl text-green-500 mb-2"></i>
+                            <p>No alerts yet</p>
+                            <p class="text-sm">System is running normally</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Statistics Section -->
+        <section class="mt-8 bg-white rounded-2xl shadow-xl p-6 animate-slide-up" style="animation-delay: 0.3s;">
+            <h2 class="text-xl font-semibold text-gray-800 mb-6">
+                <i class="fas fa-chart-line mr-2 text-green-600"></i>
+                Session Statistics
+            </h2>
+            
+            <div class="grid md:grid-cols-4 gap-6">
+                <div class="text-center">
+                    <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 mb-3">
+                        <i class="fas fa-clock text-2xl text-green-600"></i>
+                    </div>
+                    <p class="text-sm text-gray-600">Session Duration</p>
+                    <p id="session-duration" class="text-xl font-bold text-gray-800">00:00:00</p>
+                </div>
+                
+                <div class="text-center">
+                    <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-yellow-100 mb-3">
+                        <i class="fas fa-eye-slash text-2xl text-yellow-600"></i>
+                    </div>
+                    <p class="text-sm text-gray-600">Drowsy Events</p>
+                    <p id="drowsy-count" class="text-xl font-bold text-gray-800">0</p>
+                </div>
+                
+                <div class="text-center">
+                    <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-orange-100 mb-3">
+                        <i class="fas fa-tired text-2xl text-orange-600"></i>
+                    </div>
+                    <p class="text-sm text-gray-600">Yawn Events</p>
+                    <p id="yawn-count" class="text-xl font-bold text-gray-800">0</p>
+                </div>
+                
+                <div class="text-center">
+                    <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 mb-3">
+                        <i class="fas fa-exclamation-triangle text-2xl text-red-600"></i>
+                    </div>
+                    <p class="text-sm text-gray-600">Total Alerts</p>
+                    <p id="alert-count" class="text-xl font-bold text-gray-800">0</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Alert Modal -->
+    <div id="alert-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-2xl p-8 max-w-md mx-4 animate-scale-up">
+            <div class="text-center">
+                <div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-red-100 mb-4 animate-pulse">
+                    <i class="fas fa-exclamation-triangle text-4xl text-red-600"></i>
+                </div>
+                <h3 class="text-2xl font-bold text-gray-800 mb-2">Alert!</h3>
+                <p id="alert-message" class="text-gray-600 mb-6">Drowsiness detected!</p>
+                <button id="dismiss-alert" class="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors">
+                    <i class="fas fa-check mr-2"></i>
+                    Dismiss Alert
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-2xl p-8 max-w-md mx-4 animate-scale-up">
+            <h3 class="text-2xl font-bold text-gray-800 mb-6">Settings</h3>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Eye Ratio (EAR) Threshold</label>
+                    <input type="range" id="ear-threshold" min="0.1" max="0.35" step="0.01" value="0.19" class="w-full">
+                    <span id="ear-threshold-value" class="text-sm text-gray-600">0.19</span>
+                    <p class="text-xs text-gray-500 mt-1">Below this = Eyes Closed. Lower is less sensitive.</p>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Mouth Ratio (MAR) Threshold</label>
+                    <input type="range" id="mar-threshold" min="0.3" max="0.9" step="0.01" value="0.70" class="w-full">
+                    <span id="mar-threshold-value" class="text-sm text-gray-600">0.70</span>
+                    <p class="text-xs text-gray-500 mt-1">Above this = Yawning. Higher is less sensitive.</p>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Alert Sound</label>
+                    <label class="flex items-center">
+                        <input type="checkbox" id="alert-sound" checked class="mr-2">
+                        <span class="text-sm text-gray-700">Enable alert sounds</span>
+                    </label>
+                </div>
+            </div>
+            
+            <div class="flex justify-end space-x-4 mt-6">
+                <button id="cancel-settings" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors">
+                    Cancel
+                </button>
+                <button id="save-settings" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors">
+                    Save Settings
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>
